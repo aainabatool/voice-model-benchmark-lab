@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.141.1",
+    "faster-whisper>=1.2.1",
     "jiwer>=4.0.0",
     "librosa>=1.0.0",
     "numpy>=2.5.2",
