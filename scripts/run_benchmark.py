@@ -17,19 +17,11 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from voice_benchmark.adapters.stt.faster_whisper import FasterWhisperAdapter
-from voice_benchmark.core.exceptions import InferenceError, ModelLoadError
+from voice_benchmark.core.exceptions import InferenceError, ModelLoadError, ModelNotFoundError
 from voice_benchmark.core.models import STTResult
+from voice_benchmark.core.registry import get_stt_model, list_stt_models
 from voice_benchmark.datasets.loader import load_dataset
 from voice_benchmark.evaluation.stt_metrics import MetricComputationError, compute_stt_metrics
-
-# Known model names -> adapter factory. Extend this as more STT adapters
-# are added (build order step 9 onward covers a real model registry).
-_MODEL_FACTORIES = {
-    "faster_whisper_tiny": lambda: FasterWhisperAdapter(model_size="tiny"),
-    "faster_whisper_base": lambda: FasterWhisperAdapter(model_size="base"),
-    "faster_whisper_small": lambda: FasterWhisperAdapter(model_size="small"),
-}
 
 
 def run(dataset_path: str, model_names: list[str], output_dir: str) -> list[dict]:
@@ -39,12 +31,13 @@ def run(dataset_path: str, model_names: list[str], output_dir: str) -> list[dict
     all_results: list[dict] = []
 
     for model_name in model_names:
-        if model_name not in _MODEL_FACTORIES:
-            print(f"[skip] Unknown model '{model_name}'. Known: {list(_MODEL_FACTORIES)}")
+        try:
+            adapter = get_stt_model(model_name)
+        except ModelNotFoundError as exc:
+            print(f"[skip] {exc}")
             continue
 
         print(f"\n=== {model_name} ===")
-        adapter = _MODEL_FACTORIES[model_name]()
 
         try:
             adapter.load()
@@ -103,10 +96,21 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run an STT benchmark from the command line.")
     parser.add_argument("--dataset", default="tests/fixtures/tiny_dataset.json")
     parser.add_argument(
-        "--models", nargs="+", default=["faster_whisper_tiny", "faster_whisper_base"]
+        "--models",
+        nargs="+",
+        default=["faster_whisper_tiny", "vosk_small_en"],
+        help=f"Model names from the registry. Available: {list_stt_models()}",
     )
     parser.add_argument("--output", default="artifacts/reports")
+    parser.add_argument(
+        "--list-models", action="store_true", help="List registered models and exit."
+    )
     args = parser.parse_args()
+
+    if args.list_models:
+        for name in list_stt_models():
+            print(name)
+        return
 
     run(args.dataset, args.models, args.output)
 
