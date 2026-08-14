@@ -1,7 +1,8 @@
 ﻿"""Benchmark orchestration.
 
-The single implementation of "run an STT benchmark and persist results" --
-shared by the CLI (scripts/run_benchmark.py) and the API
+The single implementation of "run an STT/TTS benchmark and persist
+results" -- shared by the CLI (scripts/run_benchmark.py,
+scripts/run_tts_benchmark.py) and the API
 (apps/api/routes/experiments.py) so there is exactly one place this logic
 lives.
 """
@@ -10,21 +11,24 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable
 
 from voice_benchmark.core.exceptions import InferenceError, ModelLoadError, ModelNotFoundError
-from voice_benchmark.core.models import Experiment, ExperimentStatus, STTResult
-from voice_benchmark.core.registry import get_stt_model
+from voice_benchmark.core.models import Experiment, ExperimentStatus, STTResult, TTSResult
+from voice_benchmark.core.registry import get_stt_model, get_tts_model
 from voice_benchmark.datasets.loader import load_dataset
 from voice_benchmark.evaluation.stt_metrics import MetricComputationError, compute_stt_metrics
 from voice_benchmark.storage.db import init_db, session_scope
 from voice_benchmark.storage.repositories.experiment_repository import save_experiment
 from voice_benchmark.storage.repositories.result_repository import save_stt_result
+from voice_benchmark.storage.repositories.tts_result_repository import save_tts_result
 from voice_benchmark.utils.hardware import collect_hardware_metadata
 
 logger = logging.getLogger(__name__)
 
 ResultCallback = Callable[[str, STTResult], None]
+TTSResultCallback = Callable[[str, TTSResult], None]
 ModelStatusCallback = Callable[[str, str], None]
 
 
@@ -123,6 +127,104 @@ def run_stt_benchmark(
 
             with session_scope() as session:
                 save_stt_result(session, result)
+            all_results.append(result)
+            if on_result:
+                on_result(model_name, result)
+
+        adapter.unload()
+
+    experiment.end_time = datetime.now(timezone.utc)
+    experiment.status = ExperimentStatus.PARTIAL if any_failed else ExperimentStatus.SUCCESS
+    with session_scope() as session:
+        save_experiment(session, experiment)
+
+    return experiment, all_results
+
+
+def run_tts_benchmark(
+    experiment_id: str,
+    dataset_path: str,
+    model_names: list[str],
+    output_dir: str,
+    on_result: TTSResultCallback | None = None,
+    on_model_status: ModelStatusCallback | None = None,
+) -> tuple[Experiment, list[TTSResult]]:
+    """Run a TTS benchmark end to end, persisting to the DB as it goes.
+
+    Mirrors run_stt_benchmark's structure and error-handling approach.
+    Each test case's reference_text is treated as the prompt to
+    synthesize; output audio is written under `output_dir`, one file per
+    (model, test_case) pair.
+    """
+    manifest = load_dataset(dataset_path)
+    init_db()
+
+    experiment = Experiment(
+        experiment_id=experiment_id,
+        benchmark_name=manifest.dataset.name,
+        benchmark_spec_version="1.0",
+        dataset_version=manifest.dataset.version,
+        conditions=sorted({tc.condition for tc in manifest.test_cases}, key=lambda c: c.value),
+        model_versions={name: None for name in model_names},
+        hardware=collect_hardware_metadata(),
+    )
+    with session_scope() as session:
+        save_experiment(session, experiment)
+
+    all_results: list[TTSResult] = []
+    any_failed = False
+
+    for model_name in model_names:
+        try:
+            adapter = get_tts_model(model_name)
+        except ModelNotFoundError as exc:
+            logger.warning("skip: %s", exc)
+            if on_model_status:
+                on_model_status(model_name, f"skipped: {exc}")
+            any_failed = True
+            continue
+
+        try:
+            adapter.load()
+        except ModelLoadError as exc:
+            logger.warning("failed to load %s: %s", model_name, exc)
+            if on_model_status:
+                on_model_status(model_name, f"failed to load: {exc}")
+            any_failed = True
+            continue
+
+        if on_model_status:
+            on_model_status(model_name, "loaded")
+
+        for tc in manifest.test_cases:
+            output_path = str(Path(output_dir) / experiment_id / model_name / f"{tc.id}.wav")
+            try:
+                out = adapter.synthesize(tc.reference_text, output_path)
+                result = TTSResult(
+                    experiment_id=experiment_id,
+                    test_case_id=tc.id,
+                    model=model_name,
+                    output_path=out["output_path"],
+                    generation_latency_ms=out["generation_latency_ms"],
+                    output_duration_sec=out["output_duration_sec"],
+                    rtf=out["rtf"],
+                    speech_rate_wpm=out["speech_rate_wpm"],
+                    sample_rate=out["sample_rate"],
+                    channels=out["channels"],
+                    silence_ratio=out["silence_ratio"],
+                )
+            except InferenceError as exc:
+                result = TTSResult(
+                    experiment_id=experiment_id,
+                    test_case_id=tc.id,
+                    model=model_name,
+                    failed=True,
+                    error_message=str(exc),
+                )
+                any_failed = True
+
+            with session_scope() as session:
+                save_tts_result(session, result)
             all_results.append(result)
             if on_result:
                 on_result(model_name, result)

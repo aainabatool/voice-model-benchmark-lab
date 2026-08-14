@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models.
+﻿"""SQLAlchemy ORM models.
 
 Mirrors the pydantic domain schemas in core/models.py, but as persisted
 tables. Kept deliberately separate from the pydantic models -- the DB
@@ -42,6 +42,9 @@ class ExperimentORM(Base):
     stt_results: Mapped[list["STTResultORM"]] = relationship(
         back_populates="experiment", cascade="all, delete-orphan"
     )
+    tts_results: Mapped[list["TTSResultORM"]] = relationship(
+        back_populates="experiment", cascade="all, delete-orphan"
+    )
 
 
 class STTResultORM(Base):
@@ -63,3 +66,24 @@ class STTResultORM(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     experiment: Mapped["ExperimentORM"] = relationship(back_populates="stt_results")
+
+
+class TTSResultORM(Base):
+    __tablename__ = "tts_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    experiment_id: Mapped[str] = mapped_column(ForeignKey("experiments.experiment_id"))
+    test_case_id: Mapped[str] = mapped_column(String)
+    model: Mapped[str] = mapped_column(String)
+    output_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    generation_latency_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+    output_duration_sec: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rtf: Mapped[float | None] = mapped_column(Float, nullable=True)
+    speech_rate_wpm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sample_rate: Mapped[int | None] = mapped_column(nullable=True)
+    channels: Mapped[int | None] = mapped_column(nullable=True)
+    silence_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
+    failed: Mapped[bool] = mapped_column(Boolean, default=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    experiment: Mapped["ExperimentORM"] = relationship(back_populates="tts_results")

@@ -1,0 +1,30 @@
+﻿{
+  "dataset": {
+    "name": "tiny_tts_fixture",
+    "version": "1.0",
+    "language": "en"
+  },
+  "test_cases": [
+    {
+      "id": "tts_001",
+      "reference_text": "The weather is beautiful today.",
+      "language": "en",
+      "category": "general",
+      "condition": "clean"
+    },
+    {
+      "id": "tts_002",
+      "reference_text": "Please turn off the lights before you leave.",
+      "language": "en",
+      "category": "general",
+      "condition": "clean"
+    },
+    {
+      "id": "tts_003",
+      "reference_text": "The quick brown fox jumps over the lazy dog.",
+      "language": "en",
+      "category": "general",
+      "condition": "clean"
+    }
+  ]
+}
