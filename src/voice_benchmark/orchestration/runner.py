@@ -1,4 +1,4 @@
-"""Benchmark orchestration.
+﻿"""Benchmark orchestration.
 
 The single implementation of "run an STT benchmark and persist results" --
 shared by the CLI (scripts/run_benchmark.py) and the API
@@ -20,6 +20,7 @@ from voice_benchmark.evaluation.stt_metrics import MetricComputationError, compu
 from voice_benchmark.storage.db import init_db, session_scope
 from voice_benchmark.storage.repositories.experiment_repository import save_experiment
 from voice_benchmark.storage.repositories.result_repository import save_stt_result
+from voice_benchmark.utils.hardware import collect_hardware_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ def run_stt_benchmark(
         dataset_version=manifest.dataset.version,
         conditions=sorted({tc.condition for tc in manifest.test_cases}, key=lambda c: c.value),
         model_versions={name: None for name in model_names},
+        hardware=collect_hardware_metadata(),
     )
     with session_scope() as session:
         save_experiment(session, experiment)

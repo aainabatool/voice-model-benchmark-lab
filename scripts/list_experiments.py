@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 """List experiments and their results from the database.
 
 Usage:
@@ -36,6 +36,10 @@ def main() -> None:
             print(f"  dataset:   {experiment.dataset_version}")
             print(f"  started:   {experiment.start_time}")
             print(f"  ended:     {experiment.end_time}")
+            if experiment.hardware:
+                hw = experiment.hardware
+                gpu = f"{hw.gpu} ({hw.vram_gb}GB VRAM)" if hw.gpu else "none (CPU only)"
+                print(f"  hardware:  {hw.os}, Python {hw.python_version}, {hw.cpu}, {hw.ram_gb}GB RAM, GPU: {gpu}")
             print(f"  results ({len(results)}):")
             for r in results:
                 status = "FAILED" if r.failed else f"WER={r.wer:.2f} CER={r.cer:.2f}"

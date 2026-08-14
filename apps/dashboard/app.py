@@ -112,6 +112,14 @@ if experiment["status"] == "running":
     if st.button("Refresh"):
         st.rerun()
 
+hw = experiment.get("hardware")
+if hw:
+    gpu_desc = f"{hw['gpu']} ({hw['vram_gb']}GB VRAM)" if hw.get("gpu") else "CPU only"
+    st.caption(
+        f"Ran on: {hw['os']} - Python {hw['python_version']} - {hw['cpu']} - "
+        f"{hw['ram_gb']}GB RAM - GPU: {gpu_desc}"
+    )
+
 if results:
     res_df = pd.DataFrame(results)
 

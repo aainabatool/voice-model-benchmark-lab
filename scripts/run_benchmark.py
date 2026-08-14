@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 """Command-line STT benchmark runner.
 
 Thin wrapper around voice_benchmark.orchestration.runner.run_stt_benchmark
@@ -54,6 +54,10 @@ def run(dataset_path: str, model_names: list[str], output_dir: str) -> list[dict
         json.dumps([r.model_dump(mode="json") for r in results], indent=2), encoding="utf-8"
     )
     print(f"\nExperiment '{experiment_id}' status: {experiment.status.value}")
+    if experiment.hardware:
+        hw = experiment.hardware
+        gpu = f"{hw.gpu} ({hw.vram_gb}GB VRAM)" if hw.gpu else "none (CPU only)"
+        print(f"Hardware: {hw.os}, Python {hw.python_version}, {hw.cpu}, {hw.ram_gb}GB RAM, GPU: {gpu}")
     print(f"Results written to {out_path} and to the database")
 
     return [r.model_dump(mode="json") for r in results]
