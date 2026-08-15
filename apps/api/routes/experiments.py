@@ -1,4 +1,4 @@
-"""Experiment endpoints: list, get detail, and trigger new runs.
+﻿"""Experiment endpoints: list, get detail, and trigger new runs.
 
 POST /experiments returns immediately with the experiment_id (status
 "running", inserted before the background task starts) so a client can
@@ -10,11 +10,13 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from voice_benchmark.core.exceptions import DatasetError
 from voice_benchmark.core.models import Experiment, STTResult
 from voice_benchmark.orchestration.runner import new_experiment_id, run_stt_benchmark
+from voice_benchmark.reports.report_generator import generate_markdown_report
 from voice_benchmark.storage.db import init_db, session_scope
 from voice_benchmark.storage.repositories.experiment_repository import (
     get_experiment,
@@ -89,3 +91,16 @@ def get_experiment_endpoint(experiment_id: str) -> ExperimentDetail:
             raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found")
         results = get_results_for_experiment(session, experiment_id)
     return ExperimentDetail(experiment=experiment, results=results)
+
+
+@router.get("/{experiment_id}/report", response_class=PlainTextResponse)
+def get_experiment_report(experiment_id: str) -> str:
+    """Markdown report for one experiment -- same aggregations as the
+    dashboard's summary view, rendered as plain-text tables."""
+    init_db()
+    with session_scope() as session:
+        experiment = get_experiment(session, experiment_id)
+        if experiment is None:
+            raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found")
+        results = get_results_for_experiment(session, experiment_id)
+    return generate_markdown_report(experiment, results)

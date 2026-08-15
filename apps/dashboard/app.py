@@ -28,6 +28,12 @@ def api_get(path: str) -> dict | list:
     return resp.json()
 
 
+def api_get_text(path: str) -> str:
+    resp = requests.get(f"{API_BASE}{path}", timeout=10)
+    resp.raise_for_status()
+    return resp.text
+
+
 def api_post(path: str, json_body: dict) -> dict:
     resp = requests.post(f"{API_BASE}{path}", json=json_body, timeout=10)
     resp.raise_for_status()
@@ -104,10 +110,22 @@ experiment = detail["experiment"]
 results = detail["results"]
 
 st.subheader(f"Experiment: {selected_id}")
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("Status", experiment["status"])
 col2.metric("Dataset version", experiment["dataset_version"])
 col3.metric("Results recorded", len(results))
+with col4:
+    st.write("")  # vertical spacer to align the button with the metrics above
+    try:
+        report_text = api_get_text(f"/experiments/{selected_id}/report")
+        st.download_button(
+            "Download report (.md)",
+            data=report_text,
+            file_name=f"{selected_id}.md",
+            mime="text/markdown",
+        )
+    except requests.RequestException:
+        pass  # report generation failing shouldn't break the rest of the page
 
 if experiment["status"] == "running":
     st.info("Still running - click refresh to check progress.")
