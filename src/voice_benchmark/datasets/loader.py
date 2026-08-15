@@ -1,4 +1,4 @@
-"""Dataset loading.
+﻿"""Dataset loading.
 
 Reads a manifest JSON file, validates it against DatasetManifest, and
 checks that every referenced audio file actually exists -- fail fast at
@@ -19,7 +19,11 @@ def load_dataset(manifest_path: str | Path) -> DatasetManifest:
         raise DatasetError(f"Dataset manifest not found: {path}")
 
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        # utf-8-sig transparently strips a BOM if present (e.g. from
+        # PowerShell's `Set-Content -Encoding utf8`, which writes UTF-8
+        # WITH a BOM despite the name) and behaves identically to utf-8
+        # for files that don't have one.
+        raw = json.loads(path.read_text(encoding="utf-8-sig"))
         manifest = DatasetManifest.model_validate(raw)
     except Exception as exc:  # noqa: BLE001 -- normalize any parse/validation error
         raise DatasetError(f"Invalid dataset manifest {path}: {exc}") from exc
