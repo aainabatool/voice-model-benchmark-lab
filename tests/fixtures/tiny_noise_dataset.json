@@ -1,0 +1,153 @@
+{
+  "dataset": {
+    "name": "tiny_noise_fixture",
+    "version": "1.0",
+    "language": "en"
+  },
+  "test_cases": [
+    {
+      "id": "en_001",
+      "audio_path": "tests/fixtures/audio/en_001.wav",
+      "reference_text": "The weather is beautiful today.",
+      "language": "en",
+      "category": "general",
+      "condition": "clean"
+    },
+    {
+      "id": "en_001_noise_20db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_20db\\en_001.wav",
+      "reference_text": "The weather is beautiful today.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_20db"
+    },
+    {
+      "id": "en_001_noise_10db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_10db\\en_001.wav",
+      "reference_text": "The weather is beautiful today.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_10db"
+    },
+    {
+      "id": "en_001_noise_5db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_5db\\en_001.wav",
+      "reference_text": "The weather is beautiful today.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_5db"
+    },
+    {
+      "id": "en_001_noise_0db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_0db\\en_001.wav",
+      "reference_text": "The weather is beautiful today.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_0db"
+    },
+    {
+      "id": "en_001_noise_neg5db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_neg5db\\en_001.wav",
+      "reference_text": "The weather is beautiful today.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_neg5db"
+    },
+    {
+      "id": "en_002",
+      "audio_path": "tests/fixtures/audio/en_002.wav",
+      "reference_text": "Please turn off the lights before you leave.",
+      "language": "en",
+      "category": "general",
+      "condition": "clean"
+    },
+    {
+      "id": "en_002_noise_20db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_20db\\en_002.wav",
+      "reference_text": "Please turn off the lights before you leave.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_20db"
+    },
+    {
+      "id": "en_002_noise_10db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_10db\\en_002.wav",
+      "reference_text": "Please turn off the lights before you leave.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_10db"
+    },
+    {
+      "id": "en_002_noise_5db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_5db\\en_002.wav",
+      "reference_text": "Please turn off the lights before you leave.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_5db"
+    },
+    {
+      "id": "en_002_noise_0db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_0db\\en_002.wav",
+      "reference_text": "Please turn off the lights before you leave.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_0db"
+    },
+    {
+      "id": "en_002_noise_neg5db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_neg5db\\en_002.wav",
+      "reference_text": "Please turn off the lights before you leave.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_neg5db"
+    },
+    {
+      "id": "en_003",
+      "audio_path": "tests/fixtures/audio/en_003.wav",
+      "reference_text": "The quick brown fox jumps over the lazy dog.",
+      "language": "en",
+      "category": "general",
+      "condition": "clean"
+    },
+    {
+      "id": "en_003_noise_20db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_20db\\en_003.wav",
+      "reference_text": "The quick brown fox jumps over the lazy dog.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_20db"
+    },
+    {
+      "id": "en_003_noise_10db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_10db\\en_003.wav",
+      "reference_text": "The quick brown fox jumps over the lazy dog.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_10db"
+    },
+    {
+      "id": "en_003_noise_5db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_5db\\en_003.wav",
+      "reference_text": "The quick brown fox jumps over the lazy dog.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_5db"
+    },
+    {
+      "id": "en_003_noise_0db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_0db\\en_003.wav",
+      "reference_text": "The quick brown fox jumps over the lazy dog.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_0db"
+    },
+    {
+      "id": "en_003_noise_neg5db",
+      "audio_path": "tests\\fixtures\\audio\\noisy\\noise_neg5db\\en_003.wav",
+      "reference_text": "The quick brown fox jumps over the lazy dog.",
+      "language": "en",
+      "category": "general",
+      "condition": "noise_neg5db"
+    }
+  ]
+}

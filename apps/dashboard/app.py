@@ -145,21 +145,47 @@ if results:
         st.markdown("**Average RTF by model** (lower = faster than real-time)")
         st.bar_chart(summary.set_index("model")["avg_rtf"])
 
+    if "condition" in res_df.columns and res_df["condition"].nunique() > 1:
+        st.markdown("#### Robustness curve (WER vs. noise condition)")
+        condition_order = [
+            "noise_neg5db",
+            "noise_0db",
+            "noise_5db",
+            "noise_10db",
+            "noise_20db",
+            "clean",
+        ]
+        present = [c for c in condition_order if c in res_df["condition"].unique()]
+        robustness = (
+            res_df.groupby(["condition", "model"])["wer"]
+            .mean()
+            .reset_index()
+            .pivot(index="condition", columns="model", values="wer")
+            .reindex(present)
+        )
+        st.line_chart(robustness)
+        st.caption(
+            "Left = noisiest (-5dB SNR) -> right = clean. A model that stays flatter "
+            "across this curve is more robust to noise, even if a less robust model "
+            "wins on clean audio alone."
+        )
+
     st.markdown("#### All results")
+    display_cols = [
+        "model",
+        "test_case_id",
+        "condition",
+        "reference",
+        "prediction",
+        "wer",
+        "cer",
+        "rtf",
+        "latency_ms",
+        "failed",
+    ]
+    display_cols = [c for c in display_cols if c in res_df.columns]
     st.dataframe(
-        res_df[
-            [
-                "model",
-                "test_case_id",
-                "reference",
-                "prediction",
-                "wer",
-                "cer",
-                "rtf",
-                "latency_ms",
-                "failed",
-            ]
-        ],
+        res_df[display_cols],
         use_container_width=True,
         hide_index=True,
     )
