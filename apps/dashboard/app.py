@@ -15,6 +15,8 @@ import pandas as pd
 import requests
 import streamlit as st
 
+from voice_benchmark.analytics.pareto import ParetoPoint, compute_pareto_frontier
+
 st.set_page_config(page_title="Voice Model Benchmark Lab", layout="wide")
 
 API_BASE = st.sidebar.text_input("API base URL", value="http://127.0.0.1:8000")
@@ -144,6 +146,25 @@ if results:
     with chart_col2:
         st.markdown("**Average RTF by model** (lower = faster than real-time)")
         st.bar_chart(summary.set_index("model")["avg_rtf"])
+
+    if summary["model"].nunique() > 1:
+        st.markdown("#### Pareto analysis: accuracy vs. speed tradeoff")
+        pareto_points = [
+            ParetoPoint(row["model"], x=row["avg_wer"], y=row["avg_rtf"])
+            for _, row in summary.iterrows()
+        ]
+        frontier = compute_pareto_frontier(pareto_points)
+        summary["pareto"] = summary["model"].apply(
+            lambda m: "Pareto-optimal" if m in frontier else "Dominated"
+        )
+        st.scatter_chart(summary, x="avg_wer", y="avg_rtf", color="pareto", size=120)
+        st.caption(
+            "Bottom-left is best (lower WER, lower RTF). A 'Dominated' model is beaten "
+            "on both axes by some other model here -- there's no accuracy/speed reason "
+            "to pick it over a Pareto-optimal one."
+        )
+        pareto_names = summary.loc[summary["pareto"] == "Pareto-optimal", "model"].tolist()
+        st.write("**Pareto-optimal models:** " + ", ".join(pareto_names))
 
     if "condition" in res_df.columns and res_df["condition"].nunique() > 1:
         st.markdown("#### Robustness curve (WER vs. noise condition)")
