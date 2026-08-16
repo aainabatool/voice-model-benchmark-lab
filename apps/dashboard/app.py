@@ -3,13 +3,26 @@
 Talks to the FastAPI backend over HTTP -- never touches the database
 directly, matching the dashboard -> API -> orchestrator architecture.
 
-Requires the API to be running first:
+Local dev:
     uv run uvicorn apps.api.main:app --reload
-
-Then:
     uv run streamlit run apps/dashboard/app.py
+
+Deployed: this dashboard is meant to run on Streamlit Community Cloud
+pointed at a separately hosted API (e.g. Render). Set API_BASE_URL in
+that platform's secrets/environment so the sidebar defaults to the right
+place instead of localhost -- see README "Deployment" section.
 """
 from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+# Make `voice_benchmark` importable even when this repo isn't pip-installed
+# (e.g. on Streamlit Community Cloud, which only installs this file's own
+# requirements.txt, not the full project). Harmless no-op if it's already
+# importable, as it is in local dev via `uv run`.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 import pandas as pd
 import requests
@@ -17,9 +30,33 @@ import streamlit as st
 
 from voice_benchmark.analytics.pareto import ParetoPoint, compute_pareto_frontier
 
-st.set_page_config(page_title="Voice Model Benchmark Lab", layout="wide")
+st.set_page_config(
+    page_title="Voice Model Benchmark Lab",
+    page_icon="\U0001F399\uFE0F",
+    layout="wide",
+)
 
-API_BASE = st.sidebar.text_input("API base URL", value="http://127.0.0.1:8000")
+
+def _default_api_base() -> str:
+    try:
+        secret_value = st.secrets.get("API_BASE_URL")
+    except Exception:
+        secret_value = None
+    return secret_value or os.environ.get("API_BASE_URL", "http://127.0.0.1:8000")
+
+
+API_BASE = st.sidebar.text_input("API base URL", value=_default_api_base())
+
+with st.sidebar.expander("About this project", expanded=False):
+    st.markdown(
+        "A local-first benchmarking platform for STT/TTS voice models: "
+        "accuracy (WER/CER), latency, real-time factor, noise robustness, "
+        "and accuracy/speed tradeoffs, tracked across reproducible "
+        "experiments.\n\n"
+        "**Stack:** FastAPI \u00b7 SQLAlchemy \u00b7 Streamlit \u00b7 "
+        "Faster-Whisper \u00b7 Vosk \u00b7 pyttsx3\n\n"
+        "[Source on GitHub](https://github.com/aainabatool/voice-model-benchmark-lab)"
+    )
 
 
 def api_get(path: str) -> dict | list:
@@ -35,61 +72,65 @@ def api_get_text(path: str) -> str:
 
 
 def api_post(path: str, json_body: dict) -> dict:
-    resp = requests.post(f"{API_BASE}{path}", json=json_body, timeout=10)
+    resp = requests.post(f"{API_BASE}{path}", json=json_body, timeout=15)
     resp.raise_for_status()
     return resp.json()
 
 
-st.title("Voice Model Benchmark Lab")
+st.title("\U0001F399\uFE0F Voice Model Benchmark Lab")
+st.caption(
+    "Compare speech-to-text and text-to-speech models on accuracy, speed, "
+    "and noise robustness -- with every run tracked as a reproducible experiment."
+)
 
-tab_stt, tab_tts = st.tabs(["STT Benchmarks", "TTS Benchmarks"])
+tab_stt, tab_tts = st.tabs(["\U0001F3A4 STT Benchmarks", "\U0001F5E3\uFE0F TTS Benchmarks"])
 
 # ============================================================================
 # STT tab
 # ============================================================================
 with tab_stt:
-    st.subheader("Run a new STT benchmark")
+    with st.container(border=True):
+        st.subheader("Run a new STT benchmark")
 
-    try:
-        stt_models: dict[str, str] = api_get("/models")  # type: ignore[assignment]
-        stt_api_ok = True
-    except requests.RequestException as exc:
-        st.error(f"Can't reach API at {API_BASE}\n\n{exc}")
-        stt_models = {}
-        stt_api_ok = False
+        try:
+            stt_models: dict[str, str] = api_get("/models")  # type: ignore[assignment]
+            stt_api_ok = True
+        except requests.RequestException as exc:
+            st.error(f"Can't reach API at {API_BASE}\n\n{exc}")
+            stt_models = {}
+            stt_api_ok = False
 
-    if stt_api_ok:
-        stt_model_names = list(stt_models.keys())
-        stt_selected_models = st.multiselect(
-            "Models",
-            options=stt_model_names,
-            default=stt_model_names[:2],
-            format_func=lambda name: f"{name} - {stt_models[name]}",
-            key="stt_models_select",
-        )
-        stt_dataset_path = st.text_input(
-            "Dataset manifest path",
-            value="tests/fixtures/tiny_dataset.json",
-            key="stt_dataset_path",
-        )
+        if stt_api_ok:
+            stt_model_names = list(stt_models.keys())
+            stt_selected_models = st.multiselect(
+                "Models",
+                options=stt_model_names,
+                default=stt_model_names[:2],
+                format_func=lambda name: f"{name} - {stt_models[name]}",
+                key="stt_models_select",
+            )
+            stt_dataset_path = st.text_input(
+                "Dataset manifest path",
+                value="tests/fixtures/tiny_dataset.json",
+                key="stt_dataset_path",
+            )
 
-        if st.button(
-            "Run STT benchmark",
-            disabled=not stt_selected_models,
-            type="primary",
-            key="stt_run_button",
-        ):
-            try:
-                result = api_post(
-                    "/experiments",
-                    {"dataset_path": stt_dataset_path, "models": stt_selected_models},
-                )
-                st.session_state["last_stt_experiment_id"] = result["experiment_id"]
-                st.success(f"Started: {result['experiment_id']}")
-            except requests.RequestException as exc:
-                st.error(f"Failed to start run: {exc}")
+            if st.button(
+                "Run STT benchmark",
+                disabled=not stt_selected_models,
+                type="primary",
+                key="stt_run_button",
+            ):
+                try:
+                    result = api_post(
+                        "/experiments",
+                        {"dataset_path": stt_dataset_path, "models": stt_selected_models},
+                    )
+                    st.session_state["last_stt_experiment_id"] = result["experiment_id"]
+                    st.success(f"Started: {result['experiment_id']}")
+                except requests.RequestException as exc:
+                    st.error(f"Failed to start run: {exc}")
 
-    st.divider()
     st.subheader("STT Experiments")
 
     try:
@@ -119,7 +160,7 @@ with tab_stt:
         experiment = detail["experiment"]
         results = detail["results"]
 
-        st.markdown(f"#### Experiment: {selected_id}")
+        st.markdown(f"#### Experiment: `{selected_id}`")
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Status", experiment["status"])
         col2.metric("Dataset version", experiment["dataset_version"])
@@ -129,7 +170,7 @@ with tab_stt:
             try:
                 report_text = api_get_text(f"/experiments/{selected_id}/report")
                 st.download_button(
-                    "Download report (.md)",
+                    "\U0001F4C4 Download report (.md)",
                     data=report_text,
                     file_name=f"{selected_id}.md",
                     mime="text/markdown",
@@ -147,8 +188,8 @@ with tab_stt:
         if hw:
             gpu_desc = f"{hw['gpu']} ({hw['vram_gb']}GB VRAM)" if hw.get("gpu") else "CPU only"
             st.caption(
-                f"Ran on: {hw['os']} - Python {hw['python_version']} - {hw['cpu']} - "
-                f"{hw['ram_gb']}GB RAM - GPU: {gpu_desc}"
+                f"Ran on: {hw['os']} \u00b7 Python {hw['python_version']} \u00b7 {hw['cpu']} \u00b7 "
+                f"{hw['ram_gb']}GB RAM \u00b7 GPU: {gpu_desc}"
             )
 
         if results:
@@ -242,55 +283,55 @@ with tab_stt:
 # TTS tab
 # ============================================================================
 with tab_tts:
-    st.subheader("Run a new TTS benchmark")
+    with st.container(border=True):
+        st.subheader("Run a new TTS benchmark")
 
-    try:
-        tts_models: dict[str, str] = api_get("/models/tts")  # type: ignore[assignment]
-        tts_api_ok = True
-    except requests.RequestException as exc:
-        st.error(f"Can't reach API at {API_BASE}\n\n{exc}")
-        tts_models = {}
-        tts_api_ok = False
+        try:
+            tts_models: dict[str, str] = api_get("/models/tts")  # type: ignore[assignment]
+            tts_api_ok = True
+        except requests.RequestException as exc:
+            st.error(f"Can't reach API at {API_BASE}\n\n{exc}")
+            tts_models = {}
+            tts_api_ok = False
 
-    if tts_api_ok:
-        tts_model_names = list(tts_models.keys())
-        tts_selected_models = st.multiselect(
-            "Models",
-            options=tts_model_names,
-            default=tts_model_names,
-            format_func=lambda name: f"{name} - {tts_models[name]}",
-            key="tts_models_select",
-        )
-        tts_dataset_path = st.text_input(
-            "Dataset manifest path",
-            value="tests/fixtures/tiny_tts_dataset.json",
-            key="tts_dataset_path",
-        )
-        tts_output_dir = st.text_input(
-            "Output audio directory", value="artifacts/audio", key="tts_output_dir"
-        )
+        if tts_api_ok:
+            tts_model_names = list(tts_models.keys())
+            tts_selected_models = st.multiselect(
+                "Models",
+                options=tts_model_names,
+                default=tts_model_names,
+                format_func=lambda name: f"{name} - {tts_models[name]}",
+                key="tts_models_select",
+            )
+            tts_dataset_path = st.text_input(
+                "Dataset manifest path",
+                value="tests/fixtures/tiny_tts_dataset.json",
+                key="tts_dataset_path",
+            )
+            tts_output_dir = st.text_input(
+                "Output audio directory", value="artifacts/audio", key="tts_output_dir"
+            )
 
-        if st.button(
-            "Run TTS benchmark",
-            disabled=not tts_selected_models,
-            type="primary",
-            key="tts_run_button",
-        ):
-            try:
-                result = api_post(
-                    "/tts-experiments",
-                    {
-                        "dataset_path": tts_dataset_path,
-                        "models": tts_selected_models,
-                        "output_dir": tts_output_dir,
-                    },
-                )
-                st.session_state["last_tts_experiment_id"] = result["experiment_id"]
-                st.success(f"Started: {result['experiment_id']}")
-            except requests.RequestException as exc:
-                st.error(f"Failed to start run: {exc}")
+            if st.button(
+                "Run TTS benchmark",
+                disabled=not tts_selected_models,
+                type="primary",
+                key="tts_run_button",
+            ):
+                try:
+                    result = api_post(
+                        "/tts-experiments",
+                        {
+                            "dataset_path": tts_dataset_path,
+                            "models": tts_selected_models,
+                            "output_dir": tts_output_dir,
+                        },
+                    )
+                    st.session_state["last_tts_experiment_id"] = result["experiment_id"]
+                    st.success(f"Started: {result['experiment_id']}")
+                except requests.RequestException as exc:
+                    st.error(f"Failed to start run: {exc}")
 
-    st.divider()
     st.subheader("TTS Experiments")
 
     try:
@@ -328,7 +369,7 @@ with tab_tts:
         tts_experiment = tts_detail["experiment"]
         tts_results = tts_detail["results"]
 
-        st.markdown(f"#### Experiment: {tts_selected_id}")
+        st.markdown(f"#### Experiment: `{tts_selected_id}`")
         tcol1, tcol2, tcol3 = st.columns(3)
         tcol1.metric("Status", tts_experiment["status"])
         tcol2.metric("Dataset version", tts_experiment["dataset_version"])
@@ -345,8 +386,8 @@ with tab_tts:
                 f"{tts_hw['gpu']} ({tts_hw['vram_gb']}GB VRAM)" if tts_hw.get("gpu") else "CPU only"
             )
             st.caption(
-                f"Ran on: {tts_hw['os']} - Python {tts_hw['python_version']} - {tts_hw['cpu']} - "
-                f"{tts_hw['ram_gb']}GB RAM - GPU: {gpu_desc}"
+                f"Ran on: {tts_hw['os']} \u00b7 Python {tts_hw['python_version']} \u00b7 "
+                f"{tts_hw['cpu']} \u00b7 {tts_hw['ram_gb']}GB RAM \u00b7 GPU: {gpu_desc}"
             )
 
         if tts_results:
@@ -385,3 +426,9 @@ with tab_tts:
             st.dataframe(tts_res_df[tts_display_cols], use_container_width=True, hide_index=True)
         else:
             st.info("No results recorded yet for this experiment.")
+
+st.divider()
+st.caption(
+    "Voice Model Benchmark Lab \u2014 local-first STT/TTS benchmarking platform. "
+    "[View source on GitHub](https://github.com/aainabatool/voice-model-benchmark-lab)"
+)

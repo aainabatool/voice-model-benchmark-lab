@@ -1,0 +1,8 @@
+﻿# Minimal dependencies for the Streamlit dashboard ONLY.
+# The dashboard talks to the API over HTTP -- it never imports faster-whisper,
+# vosk, librosa, etc., so this stays intentionally small for fast, reliable
+# builds on Streamlit Community Cloud. The full project's dependencies live
+# in pyproject.toml and are used for local dev / the API service.
+streamlit>=1.61.0
+pandas>=3.0.0
+requests>=2.34.0

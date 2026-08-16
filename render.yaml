@@ -1,0 +1,28 @@
+﻿# Render Blueprint for the API service.
+# Deploy: https://dashboard.render.com/blueprints -> New Blueprint Instance
+# -> point at this repo. Render reads this file automatically.
+#
+# Free-tier notes (read before deploying):
+# - RAM is limited on the free plan. faster-whisper/vosk model loading is
+#   fine one model at a time; loading several large models simultaneously
+#   may hit the memory limit. Stick to "tiny"/"small" models for the live
+#   demo, or upgrade the instance type if you need more headroom.
+# - Free instances spin down after ~15 min idle. The first request after
+#   that will be slow (cold start + re-downloading any model that isn't
+#   cached on the ephemeral disk).
+# - SQLite data does NOT persist across deploys/restarts on the free plan
+#   (ephemeral disk). For persistent experiment history, set DATABASE_URL
+#   to a hosted Postgres instance instead (Render offers a free Postgres
+#   tier too) -- the app already supports this via .env / settings.py.
+
+services:
+  - type: web
+    name: voice-benchmark-api
+    env: python
+    plan: free
+    buildCommand: "pip install uv && uv sync --no-dev"
+    startCommand: "uv run uvicorn apps.api.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.13
