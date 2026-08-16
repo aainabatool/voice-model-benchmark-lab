@@ -1,4 +1,4 @@
-"""FastAPI application entrypoint.
+﻿"""FastAPI application entrypoint.
 
 Run with: uv run uvicorn apps.api.main:app --reload
 Then open http://127.0.0.1:8000/docs for interactive API docs.
@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from apps.api.routes import experiments, health, models
+from apps.api.routes import experiments, health, models, tts_experiments
 
 app = FastAPI(
     title="Voice Model Benchmark Lab API",
@@ -18,3 +18,4 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(models.router)
 app.include_router(experiments.router)
+app.include_router(tts_experiments.router)
